@@ -1,18 +1,34 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RefreshCw, ChevronRight, Lock, Unlock, AlertCircle, Shield, BookOpen, Lightbulb } from 'lucide-react';
 import { ciphers } from '../utils/crypto';
 import StepVisualizer from '../components/StepVisualizer';
 
-export default function CalculatorTab({ state, setState }) {
-  const { algo, text, output, displayedOutput, isProcessing, error, keyStr, keyA, keyB, hillMat, enigmaPos, stepData, showSteps } = state;
+// 🚀 OPTIMASI: React.memo mencegah tab ini dirender ulang jika tidak ada perubahan prop
+const CalculatorTab = React.memo(({ state, setState }) => {
+  const { algo, text, output, error, keyStr, keyA, keyB, hillMat, enigmaPos, stepData, showSteps } = state;
 
-  const updateState = (updates) => setState({ ...state, ...updates });
+  // 🚀 OPTIMASI: Pindahkan state yang berubah super cepat (animasi) ke Local State
+  // Ini mencegah App.jsx me-render seluruh halaman 20x per detik!
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [displayedOutput, setDisplayedOutput] = useState(output || '');
 
-  const handleProcess = (decrypt = false) => {
+  // 🚀 OPTIMASI: Gunakan useCallback agar fungsi tidak dibuat ulang terus menerus
+  const updateState = useCallback((updates) => {
+    setState(prev => ({ ...prev, ...updates }));
+  }, [setState]);
+
+  // Sinkronisasi local state saat memuat cache dari tab lain
+  useEffect(() => {
+    if (!isProcessing) setDisplayedOutput(output);
+  }, [output, isProcessing]);
+
+  const handleProcess = useCallback((decrypt = false) => {
     if (!text.trim()) return;
     
-    updateState({ error: '', output: '', displayedOutput: '', isProcessing: true, stepData: null, showSteps: false });
+    updateState({ error: '', output: '', stepData: null, showSteps: false });
+    setIsProcessing(true);
+    setDisplayedOutput('');
 
     try {
       let processed;
@@ -23,7 +39,7 @@ export default function CalculatorTab({ state, setState }) {
       else if (algo === 'enigma') processed = ciphers.enigma(text, enigmaPos, decrypt);
       
       const res = processed.result;
-      if (!res) { updateState({ isProcessing: false }); return; }
+      if (!res) { setIsProcessing(false); return; }
 
       processed.isDecrypt = decrypt;
 
@@ -38,19 +54,24 @@ export default function CalculatorTab({ state, setState }) {
             return chars[Math.floor(Math.random() * chars.length)];
         }).join('');
         
-        updateState({ displayedOutput: currentDisplay });
+        // Hanya merender ulang area teks kecil ini, bukan seluruh aplikasi
+        setDisplayedOutput(currentDisplay);
 
         iterations++;
         if (iterations >= maxIterations) {
           clearInterval(interval);
-          updateState({ output: res, displayedOutput: res, stepData: processed, isProcessing: false });
+          setIsProcessing(false);
+          setDisplayedOutput(res);
+          // Update global state HANYA 1 KALI setelah animasi selesai
+          updateState({ output: res, stepData: processed });
         }
       }, 50);
 
     } catch (err) {
-      updateState({ error: err.message, isProcessing: false });
+      setIsProcessing(false);
+      updateState({ error: err.message });
     }
-  };
+  }, [algo, text, keyStr, keyA, keyB, hillMat, enigmaPos, updateState]);
 
   const algoTips = {
     vigenere: { title: "Info Vigenere", desc: "Kata kunci berulang. A=0...Z=25." },
@@ -79,7 +100,7 @@ export default function CalculatorTab({ state, setState }) {
             <div className="relative">
               <select 
                 value={algo} 
-                onChange={(e) => updateState({ algo: e.target.value, output: '', displayedOutput: '', showSteps: false })}
+                onChange={(e) => updateState({ algo: e.target.value, showSteps: false })}
                 disabled={isProcessing}
                 className="glass-input w-full p-3 md:p-4 rounded-xl md:rounded-2xl text-slate-800 font-semibold text-sm md:text-base appearance-none cursor-pointer disabled:opacity-60"
               >
@@ -210,4 +231,6 @@ export default function CalculatorTab({ state, setState }) {
       </div>
     </div>
   );
-}
+});
+
+export default CalculatorTab;
