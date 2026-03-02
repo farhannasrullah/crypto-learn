@@ -2,15 +2,18 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Hash, Lightbulb } from 'lucide-react';
 
-export default function TheoryTab({ state, setState }) {
+// Gunakan React.memo agar optimal
+const TheoryTab = React.memo(({ state, setState }) => {
   const { selectedAlgo } = state;
   const setSelectedAlgo = (algo) => setState({ ...state, selectedAlgo: algo });
 
+  // 🚀 PERBAIKAN: Mengubah string LaTeX mentah menjadi elemen JSX murni
   const theories = {
     vigenere: {
       title: "Vigenere Cipher", subtitle: "Substitusi Polialfabetik Klasik",
       desc: "Algoritma ini menggunakan sederetan sandi Caesar berdasarkan huruf-huruf pada kata kunci. Ini adalah contoh sederhana dari substitusi polialfabetik.",
-      formulaEn: "C_i = (P_i + K_i) \\mod 26", formulaDe: "P_i = (C_i - K_i + 26) \\mod 26",
+      formulaEn: <>C<sub>i</sub> = (P<sub>i</sub> + K<sub>i</sub>) mod 26</>,
+      formulaDe: <>P<sub>i</sub> = (C<sub>i</sub> - K<sub>i</sub> + 26) mod 26</>,
       rules: [
         "Huruf diubah menjadi angka: A=0, B=1, ... Z=25.",
         "Kata kunci diulang terus-menerus hingga panjangnya sama dengan teks asli.",
@@ -20,7 +23,8 @@ export default function TheoryTab({ state, setState }) {
     affine: {
       title: "Affine Cipher", subtitle: "Kombinasi Perkalian & Pergeseran",
       desc: "Affine cipher adalah jenis substitusi monoalfabetik yang setiap hurufnya dipetakan ke ekuivalen numeriknya, dienkripsi menggunakan fungsi linear sederhana.",
-      formulaEn: "C = (A \\times P + B) \\mod 26", formulaDe: "P = A^{-1} \\times (C - B) \\mod 26",
+      formulaEn: <>C = (A &times; P + B) mod 26</>,
+      formulaDe: <>P = A<sup>-1</sup> &times; (C - B) mod 26</>,
       rules: [
         "Kunci A (Multiplier) wajib memiliki nilai yang koprima dengan 26 (FPB(A, 26) = 1). Contoh: 1, 3, 5, 7, 9, 11, dst.",
         "Kunci B (Shift) bebas dari 0 hingga 25.",
@@ -30,7 +34,8 @@ export default function TheoryTab({ state, setState }) {
     playfair: {
       title: "Playfair Cipher", subtitle: "Enkripsi Digraf Berbasis Grid",
       desc: "Playfair merupakan sandi substitusi digraf pertama yang praktis. Mengenkripsi pasangan huruf (digraf) sekaligus menggunakan tabel/grid 5x5.",
-      formulaEn: "Tiga Aturan Pergeseran Matriks 5x5", formulaDe: "Kebalikan dari Tiga Aturan Matriks",
+      formulaEn: "Tiga Aturan Pergeseran Matriks 5x5", 
+      formulaDe: "Kebalikan dari Tiga Aturan Matriks",
       rules: [
         "Huruf 'J' dilebur menjadi 'I' agar alfabet muat dalam grid 25 kotak.",
         "Jika digraf berada di baris yang sama, geser ke kanan 1 kotak.",
@@ -41,7 +46,8 @@ export default function TheoryTab({ state, setState }) {
     hill: {
       title: "Hill Cipher", subtitle: "Kriptografi Aljabar Linear",
       desc: "Diciptakan oleh Lester S. Hill, algoritma ini memanfaatkan konsep aljabar linear (perkalian matriks), menyembunyikan karakteristik huruf tunggal.",
-      formulaEn: "\\mathbf{C} = (\\mathbf{K} \\cdot \\mathbf{P}) \\mod 26", formulaDe: "\\mathbf{P} = (\\mathbf{K}^{-1} \\cdot \\mathbf{C}) \\mod 26",
+      formulaEn: <><strong>C</strong> = (<strong>K</strong> &middot; <strong>P</strong>) mod 26</>,
+      formulaDe: <><strong>P</strong> = (<strong>K</strong><sup>-1</sup> &middot; <strong>C</strong>) mod 26</>,
       rules: [
         "Pesan dibagi menjadi vektor blok berukuran n (misal 2x1 untuk matriks 2x2).",
         "Matriks Kunci (K) harus berupa matriks persegi.",
@@ -51,7 +57,8 @@ export default function TheoryTab({ state, setState }) {
     enigma: {
       title: "Mesin Enigma", subtitle: "Elektromekanis Perang Dunia II",
       desc: "Enigma menggunakan sistem rotor elektromekanis yang berputar setiap kali tuts ditekan, mengubah enkripsi secara dinamis untuk setiap huruf.",
-      formulaEn: "C = E_{reflektor}(E_{rotor3}(E_{rotor2}(E_{rotor1}(P))))", formulaDe: "Sama persis (Enigma bersifat Simetris)",
+      formulaEn: <>C = E<sub>reflektor</sub>(E<sub>rotor3</sub>(E<sub>rotor2</sub>(E<sub>rotor1</sub>(P))))</>,
+      formulaDe: "Sama persis (Enigma bersifat Simetris)",
       rules: [
         "Mesin bersifat resiprokal: Jika A menjadi X, maka X pasti menjadi A.",
         "Rotor bergeser satu langkah setiap penekanan tombol. Rotor kedua bergerak jika rotor pertama mencapai titik 'notch'.",
@@ -111,6 +118,7 @@ export default function TheoryTab({ state, setState }) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 <div className="bg-indigo-50/80 p-4 md:p-5 rounded-2xl border border-indigo-100">
                   <span className="text-[10px] md:text-xs font-bold text-indigo-400 uppercase tracking-widest">Rumus Enkripsi</span>
+                  {/* React akan merender tag HTML yang kita tulis di dalam JSX secara otomatis */}
                   <p className="text-base md:text-lg font-mono text-indigo-900 mt-2 font-bold">{sel.formulaEn}</p>
                 </div>
                 <div className="bg-pink-50/80 p-4 md:p-5 rounded-2xl border border-pink-100">
@@ -137,4 +145,6 @@ export default function TheoryTab({ state, setState }) {
       </div>
     </div>
   );
-}
+});
+
+export default TheoryTab;
