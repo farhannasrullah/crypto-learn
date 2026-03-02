@@ -270,6 +270,42 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('kalkulator');
   const [isLoading, setIsLoading] = useState(true);
 
+  // --- GLOBAL STATE FOR CACHING ---
+  // Calculator State
+  const [calcState, setCalcState] = useState({
+    algo: 'vigenere',
+    text: '',
+    output: '',
+    displayedOutput: '',
+    isProcessing: false,
+    error: '',
+    keyStr: 'KUNCI',
+    keyA: '5',
+    keyB: '8',
+    hillMat: '3,3,2,5',
+    enigmaPos: 'AAA',
+    stepData: null,
+    showSteps: false
+  });
+
+  // Theory State
+  const [theoryState, setTheoryState] = useState({
+    selectedAlgo: 'vigenere'
+  });
+
+  // Learn State
+  const [learnState, setLearnState] = useState({
+    selectedCategory: 'vigenere'
+  });
+
+  // Quiz State
+  const [quizState, setQuizState] = useState({
+    step: 0,
+    correctCount: 0,
+    isFinished: false,
+    selectedOpt: null
+  });
+
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 2500);
     return () => clearTimeout(timer);
@@ -316,7 +352,7 @@ export default function App() {
 
             <header className="mb-6 md:mb-10 hidden md:block text-left">
               <h1 className="text-3xl md:text-5xl font-black text-slate-800 tracking-tight">
-                Crypto <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500">Learn</span>
+                Kriptografi <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500">Klasik</span>
               </h1>
               <p className="text-slate-500 mt-2 text-sm md:text-lg font-medium max-w-2xl leading-relaxed">
                 Pelajari, simulasikan, dan uji kemampuan Anda dalam memahami algoritma enkripsi bersejarah.
@@ -326,10 +362,10 @@ export default function App() {
             <div className="relative z-10 w-full">
               <AnimatePresence mode="wait">
                 <motion.div key={activeTab} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} transition={{ duration: 0.3 }}>
-                  {activeTab === 'kalkulator' && <CalculatorTab />}
-                  {activeTab === 'teori' && <TheoryTab />}
-                  {activeTab === 'belajar' && <LearnTab />}
-                  {activeTab === 'kuis' && <QuizTab />}
+                  {activeTab === 'kalkulator' && <CalculatorTab state={calcState} setState={setCalcState} />}
+                  {activeTab === 'teori' && <TheoryTab state={theoryState} setState={setTheoryState} />}
+                  {activeTab === 'belajar' && <LearnTab state={learnState} setState={setLearnState} />}
+                  {activeTab === 'kuis' && <QuizTab state={quizState} setState={setQuizState} />}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -356,8 +392,9 @@ export default function App() {
 }
 
 // --- THEORY TAB ---
-function TheoryTab() {
-  const [selectedAlgo, setSelectedAlgo] = useState('vigenere');
+function TheoryTab({ state, setState }) {
+  const { selectedAlgo } = state;
+  const setSelectedAlgo = (algo) => setState({ ...state, selectedAlgo: algo });
 
   const theories = {
     vigenere: {
@@ -508,28 +545,15 @@ function TheoryTab() {
 }
 
 // --- CALCULATOR TAB ---
-function CalculatorTab() {
-  const [algo, setAlgo] = useState('vigenere');
-  const [text, setText] = useState('');
-  const [output, setOutput] = useState('');
-  const [displayedOutput, setDisplayedOutput] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState('');
-  
-  const [keyStr, setKeyStr] = useState('KUNCI');
-  const [keyA, setKeyA] = useState('5');
-  const [keyB, setKeyB] = useState('8');
-  const [hillMat, setHillMat] = useState('3,3,2,5'); 
-  const [enigmaPos, setEnigmaPos] = useState('AAA');
+function CalculatorTab({ state, setState }) {
+  const { algo, text, output, displayedOutput, isProcessing, error, keyStr, keyA, keyB, hillMat, enigmaPos, stepData, showSteps } = state;
 
-  const [stepData, setStepData] = useState(null);
-  const [showSteps, setShowSteps] = useState(false);
+  const updateState = (updates) => setState({ ...state, ...updates });
 
   const handleProcess = (decrypt = false) => {
     if (!text.trim()) return;
     
-    setError(''); setOutput(''); setDisplayedOutput('');
-    setIsProcessing(true); setStepData(null); setShowSteps(false);
+    updateState({ error: '', output: '', displayedOutput: '', isProcessing: true, stepData: null, showSteps: false });
 
     try {
       let processed;
@@ -540,7 +564,7 @@ function CalculatorTab() {
       else if (algo === 'enigma') processed = ciphers.enigma(text, enigmaPos, decrypt);
       
       const res = processed.result;
-      if (!res) { setIsProcessing(false); return; }
+      if (!res) { updateState({ isProcessing: false }); return; }
 
       // Save processed data for Step Visualization
       processed.isDecrypt = decrypt;
@@ -551,27 +575,23 @@ function CalculatorTab() {
       const maxIterations = 20; 
       
       const interval = setInterval(() => {
-        setDisplayedOutput(
-          res.split('').map((char, index) => {
+        let currentDisplay = res.split('').map((char, index) => {
             if (char === ' ') return ' ';
             if (index < (iterations / maxIterations) * res.length) return res[index];
             return chars[Math.floor(Math.random() * chars.length)];
-          }).join('')
-        );
+        }).join('');
+        
+        updateState({ displayedOutput: currentDisplay });
 
         iterations++;
         if (iterations >= maxIterations) {
           clearInterval(interval);
-          setOutput(res);
-          setDisplayedOutput(res);
-          setStepData(processed); // Trigger Visualization display
-          setIsProcessing(false);
+          updateState({ output: res, displayedOutput: res, stepData: processed, isProcessing: false });
         }
       }, 50);
 
     } catch (err) {
-      setError(err.message);
-      setIsProcessing(false);
+      updateState({ error: err.message, isProcessing: false });
     }
   };
 
@@ -603,7 +623,7 @@ function CalculatorTab() {
             <div className="relative">
               <select 
                 value={algo} 
-                onChange={(e) => { setAlgo(e.target.value); setOutput(''); setDisplayedOutput(''); setShowSteps(false); }}
+                onChange={(e) => updateState({ algo: e.target.value, output: '', displayedOutput: '', showSteps: false })}
                 disabled={isProcessing}
                 className="glass-input w-full p-3 md:p-4 rounded-xl md:rounded-2xl text-slate-800 font-semibold text-sm md:text-base appearance-none cursor-pointer disabled:opacity-60"
               >
@@ -623,7 +643,7 @@ function CalculatorTab() {
             <label className="block text-xs md:text-sm font-bold text-slate-700 mb-1.5 md:mb-2">Teks Input</label>
             <textarea 
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => updateState({ text: e.target.value })}
               disabled={isProcessing}
               placeholder="Ketik pesan rahasia di sini..."
               className="glass-input w-full p-3 md:p-4 rounded-xl md:rounded-2xl flex-1 min-h-[100px] md:min-h-[120px] resize-none font-mono text-sm md:text-base disabled:opacity-60"
@@ -637,30 +657,30 @@ function CalculatorTab() {
             <AnimatePresence mode="popLayout">
               <motion.div key={algo} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}>
                 {(algo === 'vigenere' || algo === 'playfair') && (
-                  <input type="text" disabled={isProcessing} value={keyStr} onChange={(e) => setKeyStr(e.target.value)} placeholder="Kata Kunci (Huruf)" className="glass-input w-full p-3 md:p-4 rounded-xl font-bold text-slate-700 uppercase tracking-widest text-sm md:text-base disabled:opacity-60" />
+                  <input type="text" disabled={isProcessing} value={keyStr} onChange={(e) => updateState({ keyStr: e.target.value })} placeholder="Kata Kunci (Huruf)" className="glass-input w-full p-3 md:p-4 rounded-xl font-bold text-slate-700 uppercase tracking-widest text-sm md:text-base disabled:opacity-60" />
                 )}
                 {algo === 'affine' && (
                   <div className="flex gap-3 md:gap-4">
                     <div className="flex-1">
                       <label className="text-[10px] md:text-xs font-bold text-slate-500 mb-1.5 block uppercase">Multiplier (A)</label>
-                      <input type="number" disabled={isProcessing} value={keyA} onChange={(e) => setKeyA(e.target.value)} className="glass-input w-full p-3 md:p-4 rounded-xl font-mono text-center text-sm md:text-base disabled:opacity-60" />
+                      <input type="number" disabled={isProcessing} value={keyA} onChange={(e) => updateState({ keyA: e.target.value })} className="glass-input w-full p-3 md:p-4 rounded-xl font-mono text-center text-sm md:text-base disabled:opacity-60" />
                     </div>
                     <div className="flex-1">
                       <label className="text-[10px] md:text-xs font-bold text-slate-500 mb-1.5 block uppercase">Shift (B)</label>
-                      <input type="number" disabled={isProcessing} value={keyB} onChange={(e) => setKeyB(e.target.value)} className="glass-input w-full p-3 md:p-4 rounded-xl font-mono text-center text-sm md:text-base disabled:opacity-60" />
+                      <input type="number" disabled={isProcessing} value={keyB} onChange={(e) => updateState({ keyB: e.target.value })} className="glass-input w-full p-3 md:p-4 rounded-xl font-mono text-center text-sm md:text-base disabled:opacity-60" />
                     </div>
                   </div>
                 )}
                 {algo === 'hill' && (
                   <div>
                     <label className="text-[10px] md:text-xs font-bold text-slate-500 mb-1.5 block uppercase">Matriks 2x2 (a,b,c,d)</label>
-                    <input type="text" disabled={isProcessing} value={hillMat} onChange={(e) => setHillMat(e.target.value)} placeholder="3,3,2,5" className="glass-input w-full p-3 md:p-4 rounded-xl font-mono text-center text-sm md:text-base tracking-widest disabled:opacity-60" />
+                    <input type="text" disabled={isProcessing} value={hillMat} onChange={(e) => updateState({ hillMat: e.target.value })} placeholder="3,3,2,5" className="glass-input w-full p-3 md:p-4 rounded-xl font-mono text-center text-sm md:text-base tracking-widest disabled:opacity-60" />
                   </div>
                 )}
                 {algo === 'enigma' && (
                   <div>
                     <label className="text-[10px] md:text-xs font-bold text-slate-500 mb-1.5 block uppercase text-center">Posisi Awal Rotor</label>
-                    <input type="text" disabled={isProcessing} maxLength="3" value={enigmaPos} onChange={(e) => setEnigmaPos(e.target.value.toUpperCase())} placeholder="AAA" className="glass-input w-full p-3 md:p-4 rounded-xl font-mono text-xl md:text-2xl tracking-[1em] text-center pl-4 md:pl-8 disabled:opacity-60" />
+                    <input type="text" disabled={isProcessing} maxLength="3" value={enigmaPos} onChange={(e) => updateState({ enigmaPos: e.target.value.toUpperCase() })} placeholder="AAA" className="glass-input w-full p-3 md:p-4 rounded-xl font-mono text-xl md:text-2xl tracking-[1em] text-center pl-4 md:pl-8 disabled:opacity-60" />
                   </div>
                 )}
               </motion.div>
@@ -709,7 +729,7 @@ function CalculatorTab() {
           {stepData && !isProcessing && (
             <div className="mt-4">
               <button
-                onClick={() => setShowSteps(!showSteps)}
+                onClick={() => updateState({ showSteps: !showSteps })}
                 className="w-full py-3 bg-purple-100/80 text-purple-700 font-bold rounded-2xl text-xs md:text-sm flex items-center justify-center gap-2 hover:bg-purple-200 transition-colors shadow-sm"
               >
                 <BookOpen size={16} /> {showSteps ? "Tutup Cara Penyelesaian" : "Lihat Cara Penyelesaian"}
@@ -924,8 +944,10 @@ const videoLibrary = {
 
 const categoryNames = { vigenere: "Vigenere", affine: "Affine", playfair: "Playfair", hill: "Hill", enigma: "Enigma" };
 
-function LearnTab() {
-  const [selectedCategory, setSelectedCategory] = useState('vigenere');
+function LearnTab({ state, setState }) {
+  const { selectedCategory } = state;
+  const setSelectedCategory = (cat) => setState({ ...state, selectedCategory: cat });
+
   const videos = videoLibrary[selectedCategory];
   const heroVideo = videos[0];
   const sideVideos = videos.slice(1);
@@ -1000,41 +1022,38 @@ function LearnTab() {
   );
 }
 
-function QuizTab() {
-  const [step, setStep] = useState(0);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [isFinished, setIsFinished] = useState(false);
-  const [selectedOpt, setSelectedOpt] = useState(null);
+function QuizTab({ state, setState }) {
+  const { step, correctCount, isFinished, selectedOpt } = state;
+  const updateState = (updates) => setState({ ...state, ...updates });
 
   const handleAnswer = (index) => {
-    // Pencegahan double klik yang cepat saat proses animasi jalan
     if (selectedOpt !== null) return; 
 
-    setSelectedOpt(index);
+    updateState({ selectedOpt: index });
+    
     setTimeout(() => {
-      if (index === quizData[step].a) {
-        setCorrectCount(c => c + 1);
-      }
+      const isCorrect = index === quizData[step].a;
       
       if (step < quizData.length - 1) { 
-        setStep(s => s + 1); 
-        setSelectedOpt(null); 
+        updateState({ 
+            step: step + 1, 
+            selectedOpt: null,
+            correctCount: isCorrect ? correctCount + 1 : correctCount
+        }); 
       } else {
-        setIsFinished(true);
+        updateState({ 
+            isFinished: true,
+            correctCount: isCorrect ? correctCount + 1 : correctCount
+        });
       }
     }, 800);
   };
 
   const resetQuiz = () => { 
-    setStep(0); 
-    setCorrectCount(0); 
-    setIsFinished(false); 
-    setSelectedOpt(null); 
+    updateState({ step: 0, correctCount: 0, isFinished: false, selectedOpt: null }); 
   };
 
   if (isFinished) {
-    // Perhitungan skor berdasarkan persentase jawaban benar 
-    // sehingga selalu maksimal 100 meskipun berapapun soal ditambahkan.
     const finalScore = Math.round((correctCount / quizData.length) * 100);
 
     return (
@@ -1073,7 +1092,6 @@ function QuizTab() {
 
       <div className="glass-panel p-6 md:p-12 rounded-[2rem] md:rounded-[2.5rem] shadow-xl relative overflow-hidden">
         <div className="absolute top-0 left-0 h-1.5 bg-purple-100 w-full">
-          {/* Progress bar visual bug dipulihkan: menyesuaikan inklusif terhadap soal yang sedang dikerjakan */}
           <motion.div className="h-full bg-gradient-to-r from-purple-500 to-pink-500" initial={{ width: 0 }} animate={{ width: `${((step + 1) / quizData.length) * 100}%` }} transition={{ duration: 0.5 }}></motion.div>
         </div>
         <h3 className="text-xl md:text-3xl font-extrabold text-slate-800 mb-6 md:mb-10 leading-tight mt-4 md:mt-6">{q.q}</h3>
